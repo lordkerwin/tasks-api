@@ -11,7 +11,7 @@ class UserTest extends TestCase
     use RefreshDatabase;
 
     /** test */
-    public function testExample()
+    public function user_can_register()
     {
         $response = $this->get('/');
 
