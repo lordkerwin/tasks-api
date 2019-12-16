@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 namespace App\Http\Controllers\Api;
 
 namespace App\Http\Controllers;
+
 use Laravel\Passport\Token;
 use App\User;
 use Illuminate\Support\Facades\Validator;
@@ -59,9 +60,7 @@ class AuthController extends BaseController
 
             // getting auth user after auth login
             $user = Auth::user();
-
-            // TODO: Revoke old tokens if user logs in again!
-
+            // create access token
             $token = $user->createToken('token')->accessToken;
             $data = [
                 'token' => $token,
@@ -70,11 +69,25 @@ class AuthController extends BaseController
                     'email' => $user->email,
                 ]
             ];
-
             return $this->sendResponse($data, 'Success! you are logged in successfully');
         } else {
             return $this->sendError('Error logging in, email or password is incorrect', null, 401);
         }
     }
 
+    // -------------- [ GET User Object ] ------------------
+    public function getUser()
+    {
+        $user = Auth::user();
+        return $this->sendResponse(['user' => $user], 'User object found!');
+    }
+
+    // -------------- [ User Logout ] ------------------
+    public function logout()
+    {
+        // find the users token and revoke it
+        $user = Auth::user();
+        $user->token()->revoke();
+        return $this->sendResponse(null, 'Success! You have logged out!');
+    }
 }
