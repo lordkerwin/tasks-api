@@ -29,7 +29,7 @@ class AuthController extends BaseController
 
         // if validation fails, return an error
         if ($validator->fails()) {
-            return $this->sendError('Validation errors', $validator->errors(), 400);
+            return $this->sendError('Validation errors', $validator->errors(), 422);
         }
 
         $input = array(
