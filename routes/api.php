@@ -20,4 +20,15 @@ Route::prefix('auth')->group(function () {
         Route::get('getUser', 'AuthController@getUser');
         Route::get('logout', 'AuthController@logout');
     });
+
+
+
+});
+
+
+Route::group(['middleware' => 'auth:api'], function () {
+
+    Route::get('tasks', 'TasksController@index');
+    Route::post('tasks/store', 'TasksController@store');
+
 });

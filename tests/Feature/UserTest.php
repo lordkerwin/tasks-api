@@ -16,8 +16,8 @@ class UserTest extends TestCase
     public function user_can_register()
     {
         $response = $this->json('POST', '/api/auth/register', [
-            'name' => 'Joe Bloggs',
-            'email' => 'joe.bloggs@gmail.com',
+            'name' => $this->faker->name,
+            'email' =>$this->faker->safeEmail,
             'password' => 'password',
             'c_password' => 'password',
         ]);
@@ -44,6 +44,7 @@ class UserTest extends TestCase
     /** @test */
     public function user_can_login()
     {
+        $this->withoutExceptionHandling();
         // install passport
         \Artisan::call('passport:install');
         // create user
@@ -53,6 +54,8 @@ class UserTest extends TestCase
             'email' => $user->email,
             'password' => 'password',
         ]);
+
+//        dd($response);
 
         $response
             ->assertStatus(200)
