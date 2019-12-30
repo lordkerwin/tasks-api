@@ -6,7 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Task extends Model
 {
-    protected $guarded = [];
+    protected $table = 'tasks';
+
+    protected $fillable = [
+        'title',
+        'body',
+        'due_date',
+        'assignee_id'
+    ];
+
 
     public function user()
     {

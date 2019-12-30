@@ -4,21 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Task;
 use Faker\Provider\Base;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TasksController extends BaseController
 {
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return JsonResponse
      */
     public function index()
     {
         $user = auth()->user();
-        $tasks = Task::all()->where('user_id', $user->id);
+        $tasks = Task::where('user_id', $user->id)->get();
         if ($tasks) {
             return $this->sendResponse($tasks, 'Tasks Found');
         } else {
@@ -39,53 +41,62 @@ class TasksController extends BaseController
     /**
      * Store a newly created resource in storage.
      *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     * @return JsonResponse
      */
     public function store(Request $request)
     {
 
-//        $validatedData = $request->validate([
-//            'title' => 'required|max:2'
-//        ]);
-//
-//        if (!$validatedData) {
-//            dd('not valid');
-//        }
-//
-//        $input = $request->all();
-//        dd($input['body']);
-//        $user = auth()->user();
-//        DB::beginTransaction();
-//
-//        try {
-//            $task = new Task();
-//            $task->title = $input['title'];
-//            $task->body = $request->input('body');
-//            $task->due_date = $request->input('due_date');
-//            $task->user_id = $user->id;
-//            $task->save();
-//            DB::commit();
-//            $this->sendResponse($task->id, 'Task Created');
-//            // all good
-//        } catch (\Exception $e) {
-//            dd($e->getMessage());
-//            DB::rollback();
-//            // something went wrong
-//            $this->sendError('','','');
-//        }
+        try {
+            $request->validate([
+                'title' => 'required',
+            ]);
+        } catch (\Exception $ex) {
+            return $this->sendError($ex->getMessage(), 'Validation Failed', 422);
+        }
+
+        DB::beginTransaction();
+        try {
+
+            $task = Task::create([
+                'title' => $request->input('title'),
+                'body' => $request->input('body'),
+                'due_date' => $request->input('due_date.date'),
+                'user_id' => auth()->user()->id,
+                'assignee_id' => auth()->user()->id,
+            ]);
+            $task->save();
+
+            DB::commit();
+            return $this->sendResponse($task, 'Task Created', 201);
+        } catch (\Exception $ex) {
+
+            // Log the error
+            \Log::info($ex->getMessage());
+
+            DB::rollBack();
+            // return error
+            return $this->sendError('Task not created', '', 400);
+        }
+
 
     }
 
     /**
      * Display the specified resource.
      *
-     * @param \App\Task $task
-     * @return \Illuminate\Http\Response
+     * @param $task_id
+     * @return JsonResponse
      */
-    public function show(Task $task)
+    public function show($task_id)
     {
-        //
+        $user = auth()->user();
+        $task = Task::where('user_id', $user->id)->find($task_id);
+        if ($task) {
+            return $this->sendResponse($task, 'Task Found');
+        } else {
+            return $this->sendError('', 'Task not found', 404);
+        }
     }
 
     /**
@@ -102,13 +113,38 @@ class TasksController extends BaseController
     /**
      * Update the specified resource in storage.
      *
-     * @param \Illuminate\Http\Request $request
+     * @param Request $request
      * @param \App\Task $task
-     * @return \Illuminate\Http\Response
+     * @return JsonResponse
      */
     public function update(Request $request, Task $task)
     {
-        //
+        try {
+            $request->validate([
+                'title' => 'required',
+            ]);
+        } catch (\Exception $ex) {
+            return $this->sendError($ex->getMessage(), 'Validation Failed', 422);
+        }
+
+
+        DB::beginTransaction();
+        try {
+
+            $task->update($request->input());
+            $task->save();
+
+            DB::commit();
+            return $this->sendResponse($task, 'Task Updated', 200);
+        } catch (\Exception $ex) {
+
+            // Log the error
+            \Log::info($ex->getMessage());
+
+            DB::rollBack();
+            // return error
+            return $this->sendError('Task not updated', '', 400);
+        }
     }
 
     /**

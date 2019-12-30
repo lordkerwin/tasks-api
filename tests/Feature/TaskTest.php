@@ -24,13 +24,53 @@ class TaskTest extends TestCase
         Passport::actingAs($user);
         // create some tasks and assign to that user
         factory(Task::class, 5)->create([
-            'user_id' => $user->id
+            'assignee_id' => $user->id,
+            'user_id' => $user->id,
         ]);
         $response = $this->json('GET', 'api/tasks');
         $this->assertDatabaseHas('tasks', [
             'user_id' => $user->id
         ]);
         $response->assertStatus(200);
+    }
+
+    /** @test */
+    public function user_can_get_a_single_task()
+    {
+        $this->withoutExceptionHandling();
+        // create a user
+        $user = factory(User::class)->create();
+        // authenticate as user
+        Passport::actingAs($user);
+        // create some tasks and assign to that user
+        $task = factory(Task::class)->create([
+            'assignee_id' => $user->id,
+            'user_id' => $user->id,
+        ]);
+        $response = $this->json('GET', 'api/tasks/1');
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'id',
+                    'title',
+                    'body',
+                    'due_date',
+                    'assignee_id',
+                    'user_id'
+                ],
+            ])
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'id' => $task->id,
+                    'title' => $task->title
+                ],
+                'message' => "Task Found",
+            ]);
+
     }
 
     /** @test */
@@ -42,9 +82,44 @@ class TaskTest extends TestCase
         Passport::actingAs($user);
         // create a task and assign it to a user
         $task = factory(Task::class)->raw();
-        $response = $this->json('POST', '/api/tasks/store', $task);
-        dd($response);
-        $response->assertStatus(200);
-
+        $response = $this->postJson('/api/tasks/store', $task);
+        $this->assertDatabaseHas('tasks', [
+            'title' => $task['title'],
+            'assignee_id' => $user->id,
+            'user_id' => $user->id,
+        ]);
+        $response->assertStatus(201);
     }
+
+    /** @test */
+    public function user_can_update_a_task()
+    {
+        $this->withoutExceptionHandling();
+        // create and authenticate as user
+        $user = factory(User::class)->create();
+        Passport::actingAs($user);
+        // create a task and assign it to a user
+        $task = factory(Task::class)->create([
+            'assignee_id' => $user->id,
+            'user_id' => $user->id,
+        ]);
+
+        $payload = [
+            'title' => 'foo',
+            'body' => 'blah blah'
+        ];
+
+        $response = $this->putJson('/api/tasks/' . $task->id . '/update', $payload);
+
+        dd($response);
+
+        $this->assertDatabaseHas('tasks', [
+            'title' => $task['title'],
+            'assignee_id' => $user->id,
+            'user_id' => $user->id,
+        ]);
+        $response->assertStatus(201);
+    }
+
+
 }

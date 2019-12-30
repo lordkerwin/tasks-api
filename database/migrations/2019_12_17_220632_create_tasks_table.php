@@ -20,6 +20,7 @@ class CreateTasksTable extends Migration
             $table->text('title');
             $table->longText('body')->nullable();
             $table->dateTime('due_date')->nullable();
+            $table->bigInteger('assignee_id')->unsigned()->index();
             $table->bigInteger('user_id')->unsigned()->index();
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();
