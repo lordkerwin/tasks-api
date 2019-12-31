@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Task;
 use Exception;
-use Faker\Provider\Base;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,15 +37,15 @@ class TasksController extends BaseController
      */
     public function store(Request $request)
     {
-        \Log::info('-- Begin Creating Task --');
-        \Log::info($request);
+        Log::info('-- Begin Creating Task --');
+        Log::info($request);
 
         try {
             $request->validate([
                 'title' => 'required',
             ]);
         } catch (Exception $ex) {
-            \Log::info('-- Task Validation Failed --');
+            Log::info('-- Task Validation Failed --');
             return $this->sendError($ex->getMessage(), 'Validation Failed', 422);
         }
 
@@ -63,20 +62,17 @@ class TasksController extends BaseController
             $task->save();
 
             DB::commit();
-            \Log::info('-- End Creating Task --');
+            Log::info('-- End Creating Task --');
             return $this->sendResponse($task, 'Task Created', 201);
 
         } catch (Exception $ex) {
-
             // Log the error
-            \Log::info($ex->getMessage());
+            Log::info($ex->getMessage());
 
             DB::rollBack();
             // return error
             return $this->sendError('Task not created', '', 400);
         }
-
-
     }
 
     /**
@@ -105,6 +101,12 @@ class TasksController extends BaseController
      */
     public function update(Request $request, Task $task)
     {
+        $user = auth()->user();
+
+        if ($user->cannot('update', $task)) {
+            return $this->sendError('This task does not belong to you', '', 401);
+        }
+
         try {
             $request->validate([
                 'title' => 'required',
@@ -124,7 +126,7 @@ class TasksController extends BaseController
         } catch (Exception $ex) {
 
             // Log the error
-            \Log::info($ex->getMessage());
+            Log::info($ex->getMessage());
 
             DB::rollBack();
             // return error
@@ -140,21 +142,33 @@ class TasksController extends BaseController
      */
     public function destroy($id)
     {
-
         $task = Task::find($id);
+        $user = auth()->user();
+
+        Log::info('>> User ' . $user->name . ' (ID #' . $user->id . ') has requested to destroy task #' . $id);
+
         if (!$task) {
+            Log::info('>> Task #' . $id . ' could not be found');
             return $this->sendError('Task could not be found', '', 404);
         }
 
+        if ($user->cannot('delete', $task)) {
+            Log::info('>> User #' . $user->id . ' does not have permission to destroy task ' . $id);
+            return $this->sendError('This task does not belong to you', '', 401);
+        }
+
+
         DB::beginTransaction();
         try {
+            Log::info('>> Attempting to delete task #' . $task->id);
             $task->delete();
             DB::commit();
+            Log::info('>> Task #' . $task->id . ' Deleted');
             return $this->sendResponse(null, 'Task Deleted', 200);
         } catch (Exception $ex) {
             // Log the error
-            \Log::info($ex->getMessage());
-
+            Log::info('>> There has been an error whilst trying to delete task #' . $task->id);
+            Log::debug($ex->getMessage());
             DB::rollBack();
             // return error
             return $this->sendError('Task could not be deleted', '', 400);
@@ -182,7 +196,7 @@ class TasksController extends BaseController
             return $this->sendResponse($task, 'Task Restored', 200);
         } catch (Exception $ex) {
             // Log the error
-            \Log::info($ex->getMessage());
+            Log::info($ex->getMessage());
 
             DB::rollBack();
             // return error
