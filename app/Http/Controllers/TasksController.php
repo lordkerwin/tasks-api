@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Task;
+use Exception;
 use Faker\Provider\Base;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,15 +29,6 @@ class TasksController extends BaseController
         }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -46,18 +38,21 @@ class TasksController extends BaseController
      */
     public function store(Request $request)
     {
+        \Log::info('-- Begin Creating Task --');
+        \Log::info($request);
 
         try {
             $request->validate([
                 'title' => 'required',
             ]);
-        } catch (\Exception $ex) {
+        } catch (Exception $ex) {
+            \Log::info('-- Task Validation Failed --');
             return $this->sendError($ex->getMessage(), 'Validation Failed', 422);
         }
 
         DB::beginTransaction();
-        try {
 
+        try {
             $task = Task::create([
                 'title' => $request->input('title'),
                 'body' => $request->input('body'),
@@ -68,8 +63,10 @@ class TasksController extends BaseController
             $task->save();
 
             DB::commit();
+            \Log::info('-- End Creating Task --');
             return $this->sendResponse($task, 'Task Created', 201);
-        } catch (\Exception $ex) {
+
+        } catch (Exception $ex) {
 
             // Log the error
             \Log::info($ex->getMessage());
@@ -100,21 +97,10 @@ class TasksController extends BaseController
     }
 
     /**
-     * Show the form for editing the specified resource.
-     *
-     * @param \App\Task $task
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Task $task)
-    {
-        //
-    }
-
-    /**
      * Update the specified resource in storage.
      *
      * @param Request $request
-     * @param \App\Task $task
+     * @param Task $task
      * @return JsonResponse
      */
     public function update(Request $request, Task $task)
@@ -123,20 +109,19 @@ class TasksController extends BaseController
             $request->validate([
                 'title' => 'required',
             ]);
-        } catch (\Exception $ex) {
+        } catch (Exception $ex) {
             return $this->sendError($ex->getMessage(), 'Validation Failed', 422);
         }
 
-
         DB::beginTransaction();
         try {
-
-            $task->update($request->input());
+            $input = $request->only(['title', 'body', 'due_date', 'assignee_id']);
+            $task->update($input);
             $task->save();
 
             DB::commit();
             return $this->sendResponse($task, 'Task Updated', 200);
-        } catch (\Exception $ex) {
+        } catch (Exception $ex) {
 
             // Log the error
             \Log::info($ex->getMessage());
@@ -150,11 +135,58 @@ class TasksController extends BaseController
     /**
      * Remove the specified resource from storage.
      *
-     * @param \App\Task $task
-     * @return \Illuminate\Http\Response
+     * @param $id
+     * @return JsonResponse
      */
-    public function destroy(Task $task)
+    public function destroy($id)
     {
-        //
+
+        $task = Task::find($id);
+        if (!$task) {
+            return $this->sendError('Task could not be found', '', 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            $task->delete();
+            DB::commit();
+            return $this->sendResponse(null, 'Task Deleted', 200);
+        } catch (Exception $ex) {
+            // Log the error
+            \Log::info($ex->getMessage());
+
+            DB::rollBack();
+            // return error
+            return $this->sendError('Task could not be deleted', '', 400);
+        }
+    }
+
+    /**
+     * Restore the specified resource from storage.
+     *
+     * @param $id
+     * @return JsonResponse
+     */
+    public function restore($id)
+    {
+
+        $task = Task::withTrashed()->find($id);
+
+        if (!$task) {
+            return $this->sendError('Task could not be found', '', 404);
+        }
+        DB::beginTransaction();
+        try {
+            $task->restore();
+            DB::commit();
+            return $this->sendResponse($task, 'Task Restored', 200);
+        } catch (Exception $ex) {
+            // Log the error
+            \Log::info($ex->getMessage());
+
+            DB::rollBack();
+            // return error
+            return $this->sendError('Task could not be restored', '', 400);
+        }
     }
 }

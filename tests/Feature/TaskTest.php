@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -49,6 +50,7 @@ class TaskTest extends TestCase
         ]);
         $response = $this->json('GET', 'api/tasks/1');
 
+
         $response
             ->assertStatus(200)
             ->assertJsonStructure([
@@ -83,12 +85,12 @@ class TaskTest extends TestCase
         // create a task and assign it to a user
         $task = factory(Task::class)->raw();
         $response = $this->postJson('/api/tasks/store', $task);
+        $response->assertStatus(201);
         $this->assertDatabaseHas('tasks', [
             'title' => $task['title'],
             'assignee_id' => $user->id,
             'user_id' => $user->id,
         ]);
-        $response->assertStatus(201);
     }
 
     /** @test */
@@ -98,6 +100,7 @@ class TaskTest extends TestCase
         // create and authenticate as user
         $user = factory(User::class)->create();
         Passport::actingAs($user);
+
         // create a task and assign it to a user
         $task = factory(Task::class)->create([
             'assignee_id' => $user->id,
@@ -105,20 +108,66 @@ class TaskTest extends TestCase
         ]);
 
         $payload = [
-            'title' => 'foo',
-            'body' => 'blah blah'
+            'title' => $this->faker->sentence,
+            'body' => $this->faker->paragraph
         ];
 
         $response = $this->putJson('/api/tasks/' . $task->id . '/update', $payload);
-
-        dd($response);
-
+        $response->assertStatus(200);
         $this->assertDatabaseHas('tasks', [
-            'title' => $task['title'],
+            'title' => $payload['title'],
+            'body' => $payload['body']
+        ]);
+    }
+
+    /** @test */
+    public function user_can_delete_a_task()
+    {
+        $user = factory(User::class)->create();
+        Passport::actingAs($user);
+
+        $task = factory(Task::class)->create([
             'assignee_id' => $user->id,
             'user_id' => $user->id,
         ]);
-        $response->assertStatus(201);
+
+        $response = $this->delete('/api/tasks/' . $task->id . '/delete');
+        $response
+            ->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => null,
+                'message' => "Task Deleted",
+            ]);
+    }
+
+    /** @test */
+    public function user_can_restore_a_task()
+    {
+        $this->withoutExceptionHandling();
+
+        $user = factory(User::class)->create();
+        Passport::actingAs($user);
+
+        // create a task that's already been soft-deleted
+        $task = factory(Task::class)->create([
+            'assignee_id' => $user->id,
+            'user_id' => $user->id,
+            'deleted_at' => Carbon::now()
+        ]);
+
+
+        $response = $this->patch('/api/tasks/' . $task->id . '/restore');
+
+        $response
+            ->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'title' => $task->title
+                ],
+                'message' => "Task Restored",
+            ]);
     }
 
 
