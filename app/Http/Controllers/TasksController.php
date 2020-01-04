@@ -84,7 +84,13 @@ class TasksController extends BaseController
     public function show($task_id)
     {
         $user = auth()->user();
+
         $task = Task::where('user_id', $user->id)->find($task_id);
+
+        if ($user->cannot('view', $task)) {
+            return $this->sendError('Forbidden', '', 403);
+        }
+
         if ($task) {
             return $this->sendResponse($task, 'Task Found');
         } else {
@@ -183,8 +189,12 @@ class TasksController extends BaseController
      */
     public function restore($id)
     {
-
+        $user = auth()->user();
         $task = Task::withTrashed()->find($id);
+
+        if ($user->cannot('restore', $task)) {
+            return $this->sendError('Forbidden', '', 403);
+        }
 
         if (!$task) {
             return $this->sendError('Task could not be found', '', 404);

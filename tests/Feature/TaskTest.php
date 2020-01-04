@@ -38,7 +38,6 @@ class TaskTest extends TestCase
     /** @test */
     public function user_can_get_a_single_task()
     {
-        $this->withoutExceptionHandling();
         // create a user
         $user = factory(User::class)->create();
         // authenticate as user
@@ -68,11 +67,61 @@ class TaskTest extends TestCase
                 'success' => true,
                 'data' => [
                     'id' => $task->id,
-                    'title' => $task->title
+                    'title' => $task->title,
+                    'user_id' => $user->id
                 ],
                 'message' => "Task Found",
             ]);
 
+    }
+
+    /** @test */
+    public function user_cannot_view_another_users_task()
+    {
+        // create a user
+        $user_one = factory(User::class)->create();
+        $user_two = factory(User::class)->create();
+        // authenticate as user one
+        Passport::actingAs($user_one);
+        // create a task and assign to user one
+        $task_for_user_one = factory(Task::class)->create([
+            'assignee_id' => $user_one->id,
+            'user_id' => $user_one->id,
+        ]);
+        // create a task and assign to user one
+        $task_for_user_two = factory(Task::class)->create([
+            'assignee_id' => $user_two->id,
+            'user_id' => $user_two->id,
+        ]);
+
+        // as user one, try to get a task for user two
+        $response = $this->json('GET', 'api/tasks/' . $task_for_user_two->id);
+
+        // expect a forbidden response
+        $response
+            ->assertStatus(403)
+            ->assertJsonStructure([
+                'success',
+                'message'
+            ])
+            ->assertJson([
+                'success' => false,
+                'message' => "Forbidden",
+            ]);
+    }
+
+    /** @test */
+    public function guest_cannot_get_a_task()
+    {
+        // creat a random user
+        $user = factory(User::class)->create();
+        // create a random task
+        $task = factory(Task::class)->create([
+            'assignee_id' => $user->id,
+            'user_id' => $user->id,
+        ]);
+        $response = $this->json('GET', 'api/tasks/' . $task->id);
+        $response->assertStatus(401);
     }
 
     /** @test */
@@ -106,6 +155,7 @@ class TaskTest extends TestCase
             'assignee_id' => $user->id,
             'user_id' => $user->id,
         ]);
+
 
         $payload = [
             'title' => $this->faker->sentence,
@@ -144,8 +194,6 @@ class TaskTest extends TestCase
     /** @test */
     public function user_can_restore_a_task()
     {
-        $this->withoutExceptionHandling();
-
         $user = factory(User::class)->create();
         Passport::actingAs($user);
 
@@ -155,7 +203,6 @@ class TaskTest extends TestCase
             'user_id' => $user->id,
             'deleted_at' => Carbon::now()
         ]);
-
 
         $response = $this->patch('/api/tasks/' . $task->id . '/restore');
 
