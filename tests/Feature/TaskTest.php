@@ -72,7 +72,6 @@ class TaskTest extends TestCase
                 ],
                 'message' => "Task Found",
             ]);
-
     }
 
     /** @test */
@@ -156,7 +155,6 @@ class TaskTest extends TestCase
             'user_id' => $user->id,
         ]);
 
-
         $payload = [
             'title' => $this->faker->sentence,
             'body' => $this->faker->paragraph
@@ -216,6 +214,4 @@ class TaskTest extends TestCase
                 'message' => "Task Restored",
             ]);
     }
-
-
 }
