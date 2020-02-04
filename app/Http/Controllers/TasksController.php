@@ -64,7 +64,6 @@ class TasksController extends BaseController
             DB::commit();
             Log::info('-- End Creating Task --');
             return $this->sendResponse($task, 'Task Created', 201);
-
         } catch (Exception $ex) {
             // Log the error
             Log::info($ex->getMessage());

@@ -16,16 +16,17 @@ use Illuminate\Http\Request;
 Route::prefix('auth')->group(function () {
     Route::post('login', 'AuthController@login');
     Route::post('register', 'AuthController@register');
+
     Route::group(['middleware' => 'auth:api'], function () {
         Route::get('getUser', 'AuthController@getUser');
         Route::get('logout', 'AuthController@logout');
     });
-
-
 });
 
 
 Route::group(['middleware' => 'auth:api'], function () {
+
+
 
     Route::get('tasks', 'TasksController@index');
     Route::get('tasks/{task}', 'TasksController@show');
